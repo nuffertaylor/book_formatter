@@ -1,52 +1,109 @@
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
 
-// Create a document
-const doc = new PDFDocument();
+const A4_WIDTH = 841.89;
+const A4_HEIGHT = 595.28;
+const A4_RATIO = 76;
+const CENTER_PAGE_LEFT = A4_WIDTH / 4;
+const CENTER_PAGE_RIGHT = CENTER_PAGE_LEFT + A4_WIDTH / 2;
 
-let filename = "output.pdf";
-let prevVal = "";
-process.argv.forEach(function (val, index) {
-  if (prevVal === "-fn") {
-    filename = val;
-    if (filename.slice(filename.length - 4, filename.length) !== ".pdf") {
-      filename += ".pdf";
-    }
+const inchesToPDFKit = (inches) => {
+  return A4_RATIO * inches;
+};
+
+class BookFormatter {
+  doc; // PDFDocument
+  filename = "output.pdf"; //string
+  headerMarginX = 0.5;
+  headerMarginY = 0.5;
+
+  constructor() {
+    // Create a document
+    // A4 (841.89 x 595.28)
+    this.doc = new PDFDocument({
+      size: "A4",
+      layout: "landscape",
+      font: "fonts/FrankRuhlLibre-Regular.ttf",
+    });
+
+    // procss terminal parameters
+    let prevVal = "";
+    process.argv.forEach(function (val, index) {
+      // 'fn' flag to add custom filename
+      if (prevVal === "-fn") {
+        this.filename = val;
+        if (
+          this.filename.slice(
+            this.filename.length - 4,
+            this.filename.length
+          ) !== ".pdf"
+        ) {
+          this.filename += ".pdf";
+        }
+      }
+      prevVal = val;
+    });
+
+    this.doc.pipe(fs.createWriteStream(this.filename));
   }
-  prevVal = val;
-});
 
-// Pipe its output somewhere, like to a file or HTTP response
-// See below for browser usage
-doc.pipe(fs.createWriteStream(filename));
+  writePageNumberLeft = (num) => {
+    this.doc
+      .fontSize(12)
+      .text(
+        num,
+        inchesToPDFKit(this.headerMarginX),
+        inchesToPDFKit(this.headerMarginY)
+      );
+  };
 
-// Embed a font, set the font size, and render some text
-doc
-  .font("fonts/FrankRuhlLibre-Regular.ttf")
-  .fontSize(25)
-  .text("Some text with an embedded font!", 100, 100);
+  writePageNumberRight = (num, marginInches = 0.5) => {
+    this.doc
+      .fontSize(12)
+      .text(
+        num,
+        A4_WIDTH -
+          inchesToPDFKit(
+            this.headerMarginX + (num.toString().length - 1) * 0.1
+          ),
+        inchesToPDFKit(this.headerMarginY)
+      );
+  };
 
-// Add another page
-doc.addPage().fontSize(25).text("Here is some vector graphics...", 100, 100);
+  writeHeaderTitleLeft = (header) => {
+    const headerWidth = this.doc.widthOfString(header);
+    this.doc
+      .fontSize(12)
+      .text(
+        header,
+        CENTER_PAGE_LEFT - headerWidth / 2,
+        inchesToPDFKit(this.headerMarginY)
+      );
+  };
 
-// Draw a triangle
-doc.save().moveTo(100, 150).lineTo(100, 250).lineTo(200, 250).fill("#FF3300");
+  writeHeaderTitleRight = (header) => {
+    const headerWidth = this.doc.widthOfString(header);
+    this.doc
+      .fontSize(12)
+      .text(
+        header,
+        CENTER_PAGE_RIGHT - headerWidth / 2,
+        inchesToPDFKit(this.headerMarginY)
+      );
+  };
 
-// Apply some transforms and render an SVG path with the 'even-odd' fill rule
-doc
-  .scale(0.6)
-  .translate(470, -380)
-  .path("M 250,75 L 323,301 131,161 369,161 177,301 z")
-  .fill("red", "even-odd")
-  .restore();
+  newPage = () => {
+    this.doc.addPage();
+  };
 
-// Add some text with annotations
-doc
-  .addPage()
-  .fillColor("blue")
-  .text("Here is a link!", 100, 100)
-  .underline(100, 100, 160, 27, { color: "#0000FF" })
-  .link(100, 100, 160, 27, "http://google.com/");
+  finalizePDF = () => {
+    this.doc.end();
+  };
+}
 
-// Finalize PDF file
-doc.end();
+const formatter = new BookFormatter();
+formatter.writePageNumberLeft(1);
+formatter.writePageNumberRight(200);
+formatter.writeHeaderTitleLeft("Larry Niven");
+formatter.writeHeaderTitleRight("Ringworld");
+formatter.finalizePDF();
