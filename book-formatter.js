@@ -5,14 +5,22 @@ const { readFile } = require("fs/promises");
 const A4_WIDTH = 841.89;
 const A4_HEIGHT = 595.28;
 const A4_RATIO = 76;
+const inchesToPDFKit = (inches) => {
+  return A4_RATIO * inches;
+};
+
 const PAGE_DIVIDER = A4_WIDTH / 2;
 const CENTER_PAGE_LEFT = A4_WIDTH / 4;
 const CENTER_PAGE_RIGHT = CENTER_PAGE_LEFT + PAGE_DIVIDER;
-const CONTENT_BLOCK_HEIGHT = A4_HEIGHT - A4_RATIO * 2;
-const CONTENT_BLOCK_WIDTH = PAGE_DIVIDER - A4_RATIO * 2;
+const CONTENT_BLOCK_HEIGHT = A4_HEIGHT - A4_RATIO * 1.5;
+const CONTENT_BLOCK_WIDTH = PAGE_DIVIDER - A4_RATIO * 0.5;
+const TABBED_CONTENT_BLOCK_WIDTH = CONTENT_BLOCK_WIDTH - inchesToPDFKit(0.3);
 
-const inchesToPDFKit = (inches) => {
-  return A4_RATIO * inches;
+const CONTENT_TEXT_OPTIONS = {
+  fontSize: 12,
+  // indent: inchesToPDFKit(0.3),
+  // lineGap: inchesToPDFKit(0.025),
+  lineBreak: false,
 };
 
 class BookFormatter {
@@ -118,28 +126,85 @@ class BookFormatter {
     this.onHeaderPage = true;
   };
 
+  charIsWhiteSpace = (ch) => {
+    return /\s/.test(ch);
+  };
+
   writeChapterContents = (contents) => {
     // each newline should represent a single paragraph.
     // filter out empty lines.
     const paragraphs = contents.split(`\n`).filter((p) => !!p);
-    console.log(paragraphs.length);
-    this.writePageContentRight(paragraphs.join(`\n`));
+    // const rejoined = paragraphs.join(`\n`);
+    let curMargin = inchesToPDFKit(1);
+    const marginStep = Math.floor(
+      this.doc.heightOfString("height", CONTENT_TEXT_OPTIONS) +
+        inchesToPDFKit(0.025)
+    );
+    for (const p of paragraphs) {
+      // the width of the paragraph in PDFKit units
+      const p_length = this.doc.widthOfString(p, CONTENT_TEXT_OPTIONS);
+
+      // Number of non-tabbed lines this should take up
+      const numLines =
+        p_length <= TABBED_CONTENT_BLOCK_WIDTH
+          ? 0
+          : Math.ceil(
+              (p_length - TABBED_CONTENT_BLOCK_WIDTH) / CONTENT_BLOCK_WIDTH
+            );
+
+      // char length approximate tabbed line size (will be adjusted)
+      const tabbedLineSize = Math.floor(
+        p.length / (p_length / TABBED_CONTENT_BLOCK_WIDTH)
+      );
+
+      // char length approximate non-tabbed line size (will be adjusted)
+      const lineSize = Math.floor(p.length / numLines);
+
+      // char length of the next line to be printed. start with a tabbed line length
+      let lineLength = tabbedLineSize;
+
+      // tells us its the first line
+      let tab = true;
+      for (let i = 0; i < p.length; i += lineLength) {
+        // check if this is the first line. If not, reset lineLength to nontabbed lineSize
+        if (!tab) {
+          lineLength = lineSize;
+        }
+
+        // ensure we only linebreak at a whitespace char. make the lines shorter rather than longer.
+        while (
+          !!p.charAt(i + lineLength) &&
+          !this.charIsWhiteSpace(p.charAt(i + lineLength))
+        ) {
+          lineLength -= 1;
+        }
+        const lineContent = p.slice(i, i + lineLength).trim();
+
+        this.writePageContentRight(lineContent, curMargin, tab);
+
+        // if we just wrote the first line, change to untabbed.
+        if (tab) {
+          tab = false;
+        }
+
+        // alter the y margin for the next line
+        curMargin += marginStep;
+
+        // if curMargin exceeds the bottom margin of the page, move to the next page
+        if (curMargin > CONTENT_BLOCK_HEIGHT + inchesToPDFKit(1)) {
+          this.newPage();
+          curMargin = inchesToPDFKit(1);
+        }
+      }
+    }
   };
 
   writePageContentLeft = (content) => {};
 
-  writePageContentRight = (content) => {
-    this.doc
-      .fontSize(12)
-      .text(
-        content,
-        PAGE_DIVIDER + inchesToPDFKit(1),
-        this.onHeaderPage ? inchesToPDFKit(4) : inchesToPDFKit(1),
-        {
-          indent: inchesToPDFKit(0.3),
-          lineGap: inchesToPDFKit(0.025),
-        }
-      );
+  writePageContentRight = (content, yMargin, tabbed = false) => {
+    const xMargin = PAGE_DIVIDER + inchesToPDFKit(1 + (tabbed ? 0.3 : 0));
+
+    this.doc.text(content.trim(), xMargin, yMargin, CONTENT_TEXT_OPTIONS);
   };
 
   newPage = () => {
@@ -152,15 +217,41 @@ class BookFormatter {
     const [header, contents] = chapter.split("<END_HEADER>");
     this.writeHeaderTitleRight("Ringworld");
     this.writePageNumberRight("1");
-    this.writeChapterHeader(header);
-    console.log(
-      this.doc.widthOfString(contents, { fontSize: 12 }) / CONTENT_BLOCK_WIDTH
-    );
-    console.log(
-      this.doc.heightOfString(contents, { fontSize: 12 }) / CONTENT_BLOCK_HEIGHT
-    );
+    // this.writeChapterHeader(header);
     this.writeChapterContents(contents);
     this.finalizePDF();
+  };
+
+  printDoc = () => {
+    // TODO: when writing chapter contents, don't write to the doc yet. Instead, create object array that looks like this:
+    /* [
+      [{
+        text,
+        marginTop,
+        marginLeft,
+        tab
+      }]
+    ]
+
+    where the index (+1) is the page number.
+    We'll only actually write this to the page in this printDoc method (when all chapters are loaded)
+    pages are numbered like 
+
+    ---------------------
+    |         |         |
+    |         |         |
+    |    4    |    1    |
+    |         |         |
+    |         |         |
+    |--------------------
+    ---------------------
+    |         |         |
+    |         |         |
+    |    2    |    3    |
+    |         |         |
+    |         |         |
+    |--------------------
+    */
   };
 
   finalizePDF = () => {
