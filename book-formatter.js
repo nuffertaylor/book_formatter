@@ -9,8 +9,8 @@ const inchesToPDFKit = (inches) => {
   return A4_RATIO * inches;
 };
 const PAGE_DIVIDER = A4_WIDTH / 2;
-const CONTENT_BLOCK_HEIGHT = A4_HEIGHT - inchesToPDFKit(1.5);
-const CONTENT_BLOCK_WIDTH = PAGE_DIVIDER - inchesToPDFKit(1.5);
+const CONTENT_BLOCK_HEIGHT = A4_HEIGHT - inchesToPDFKit(1.25);
+const CONTENT_BLOCK_WIDTH = PAGE_DIVIDER - inchesToPDFKit(1.25);
 const TABBED_CONTENT_BLOCK_WIDTH = CONTENT_BLOCK_WIDTH - inchesToPDFKit(0.3);
 const CENTER_PAGE_LEFT = inchesToPDFKit(0.5) + CONTENT_BLOCK_WIDTH / 2;
 const CENTER_PAGE_RIGHT =
@@ -206,7 +206,7 @@ class BookFormatter {
           text: lineContent,
           marginX: this.leftOrRight
             ? inchesToPDFKit(0.5 + (tab ? 0.3 : 0))
-            : PAGE_DIVIDER + inchesToPDFKit(1 + (tab ? 0.3 : 0)),
+            : PAGE_DIVIDER + inchesToPDFKit(0.75 + (tab ? 0.3 : 0)),
           marginY: curMarginY,
           fontSize: 12,
         });
@@ -315,6 +315,8 @@ class BookFormatter {
           } else {
             this.writePageNumberRight(pageNum);
             this.writeHeaderTitleRight();
+            this.drawCenterLine();
+            this.drawContentBoxes();
           }
         }
       };
@@ -352,7 +354,7 @@ class BookFormatter {
       .stroke();
 
     // right side
-    topLeftX += PAGE_DIVIDER + inchesToPDFKit(0.5);
+    topLeftX += PAGE_DIVIDER + inchesToPDFKit(0.25);
     this.doc
       .moveTo(topLeftX, topLeftY)
       .polygon(
