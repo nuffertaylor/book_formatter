@@ -195,7 +195,8 @@ class BookFormatter {
         let lineContent = p.slice(i, i + lineLength).trim();
         while (
           !this.charIsWhiteSpace(p.charAt(i + lineLength)) ||
-          this.doc.widthOfString(lineContent) > CONTENT_BLOCK_WIDTH
+          this.doc.widthOfString(lineContent) >
+            (tab ? TABBED_CONTENT_BLOCK_WIDTH : CONTENT_BLOCK_WIDTH)
         ) {
           lineLength -= 1;
           lineContent = p.slice(i, i + lineLength).trim();
