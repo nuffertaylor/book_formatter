@@ -14,7 +14,7 @@ const CONTENT_BLOCK_WIDTH = PAGE_DIVIDER - inchesToPDFKit(1.25);
 const TABBED_CONTENT_BLOCK_WIDTH = CONTENT_BLOCK_WIDTH - inchesToPDFKit(0.3);
 const CENTER_PAGE_LEFT = inchesToPDFKit(0.5) + CONTENT_BLOCK_WIDTH / 2;
 const CENTER_PAGE_RIGHT =
-  PAGE_DIVIDER + inchesToPDFKit(1) + CONTENT_BLOCK_WIDTH / 2;
+  PAGE_DIVIDER + inchesToPDFKit(0.75) + CONTENT_BLOCK_WIDTH / 2;
 
 const CONTENT_TEXT_OPTIONS = {
   fontSize: 12,
@@ -37,8 +37,8 @@ class BookFormatter {
       fontSize: int
     }*/
   leftOrRight; // boolean, true === left, false === right
-  headerLeft = "Niven"; // string
-  headerRight = "Ringworld"; // string
+  headerLeft; // string
+  headerRight; // string
 
   constructor() {
     // Create a document
@@ -315,8 +315,6 @@ class BookFormatter {
           } else {
             this.writePageNumberRight(pageNum);
             this.writeHeaderTitleRight();
-            this.drawCenterLine();
-            this.drawContentBoxes();
           }
         }
       };
@@ -367,7 +365,30 @@ class BookFormatter {
   };
 }
 
+let prevVal = null;
+let title = null;
+for (const val of process.argv) {
+  if (prevVal === "-t") {
+    title = val;
+  }
+  prevVal = val;
+}
+
+if (title == null) {
+  console.log("no title provided");
+  process.exit();
+}
+
 const formatter = new BookFormatter();
-formatter.loadChapters(["ringworld-1.txt", "ringworld-2.txt"]).then(() => {
+let files = [];
+for (let i = 1; i <= 24; i++) {
+  files.push(title + "-" + i.toString() + ".txt");
+}
+formatter.loadChapters(files).then(() => {
   formatter.printDoc();
 });
+
+// expected file format: "{title}-{index}.txt (1 indexed)
+
+// you can use this terminal command to create the files
+// for i in {1..100}; do touch title-${i}.txt; done
