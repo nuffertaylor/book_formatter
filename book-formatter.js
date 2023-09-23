@@ -8,13 +8,13 @@ const A4_RATIO = 76;
 const inchesToPDFKit = (inches) => {
   return A4_RATIO * inches;
 };
-
 const PAGE_DIVIDER = A4_WIDTH / 2;
-const CENTER_PAGE_LEFT = A4_WIDTH / 4;
-const CENTER_PAGE_RIGHT = CENTER_PAGE_LEFT + PAGE_DIVIDER;
 const CONTENT_BLOCK_HEIGHT = A4_HEIGHT - inchesToPDFKit(1.5);
 const CONTENT_BLOCK_WIDTH = PAGE_DIVIDER - inchesToPDFKit(1.5);
 const TABBED_CONTENT_BLOCK_WIDTH = CONTENT_BLOCK_WIDTH - inchesToPDFKit(0.3);
+const CENTER_PAGE_LEFT = inchesToPDFKit(0.5) + CONTENT_BLOCK_WIDTH / 2;
+const CENTER_PAGE_RIGHT =
+  PAGE_DIVIDER + inchesToPDFKit(1) + CONTENT_BLOCK_WIDTH / 2;
 
 const CONTENT_TEXT_OPTIONS = {
   fontSize: 12,
@@ -219,7 +219,10 @@ class BookFormatter {
         curMarginY += marginStep;
 
         // if curMarginY exceeds the bottom margin of the page, move to the next page
-        if (curMarginY > CONTENT_BLOCK_HEIGHT + inchesToPDFKit(1)) {
+        if (
+          curMarginY + marginStep >
+          CONTENT_BLOCK_HEIGHT + inchesToPDFKit(1)
+        ) {
           this.pages.push(this.curPage);
           this.curPage = [];
           curMarginY = inchesToPDFKit(1);
@@ -233,14 +236,6 @@ class BookFormatter {
     }
   };
 
-  writePageContentLeft = (content) => {};
-
-  writePageContentRight = (content, yMargin, tabbed = false) => {
-    const xMargin = PAGE_DIVIDER + inchesToPDFKit(1 + (tabbed ? 0.3 : 0));
-
-    this.doc.text(content.trim(), xMargin, yMargin, CONTENT_TEXT_OPTIONS);
-  };
-
   newPage = () => {
     this.doc.addPage();
   };
@@ -249,6 +244,10 @@ class BookFormatter {
     const chapter = await readFile("./ringworld-1.txt", "utf8");
     // chapter header will be all contents of the file until the <END_HEADER> flag
     const [header, contents] = chapter.split("<END_HEADER>");
+    // ensure the starting page of the chapter is odd
+    if ((this.pages.length + 1) % 2 !== 1) {
+      this.pages.push([]);
+    }
     this.writeChapterHeader(header);
     this.writeChapterContents(contents);
   };
