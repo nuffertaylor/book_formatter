@@ -12,14 +12,12 @@ const inchesToPDFKit = (inches) => {
 const PAGE_DIVIDER = A4_WIDTH / 2;
 const CENTER_PAGE_LEFT = A4_WIDTH / 4;
 const CENTER_PAGE_RIGHT = CENTER_PAGE_LEFT + PAGE_DIVIDER;
-const CONTENT_BLOCK_HEIGHT = A4_HEIGHT - A4_RATIO * 1.5;
-const CONTENT_BLOCK_WIDTH = PAGE_DIVIDER - A4_RATIO * 0.5;
+const CONTENT_BLOCK_HEIGHT = A4_HEIGHT - inchesToPDFKit(1.5);
+const CONTENT_BLOCK_WIDTH = PAGE_DIVIDER - inchesToPDFKit(1.5);
 const TABBED_CONTENT_BLOCK_WIDTH = CONTENT_BLOCK_WIDTH - inchesToPDFKit(0.3);
 
 const CONTENT_TEXT_OPTIONS = {
   fontSize: 12,
-  // indent: inchesToPDFKit(0.3),
-  // lineGap: inchesToPDFKit(0.025),
   lineBreak: false,
 };
 
@@ -38,13 +36,6 @@ class BookFormatter {
       size: "A4",
       layout: "landscape",
       font: "fonts/FrankRuhlLibre-Regular.ttf",
-      fontSize: 12,
-      margins: {
-        top: inchesToPDFKit(1),
-        left: inchesToPDFKit(0.5),
-        right: inchesToPDFKit(0.5),
-        bottom: inchesToPDFKit(0.5),
-      },
     });
 
     // procss terminal parameters
@@ -127,15 +118,19 @@ class BookFormatter {
   };
 
   charIsWhiteSpace = (ch) => {
-    return /\s/.test(ch);
+    return ch === " " || ch === "";
   };
 
   writeChapterContents = (contents) => {
     // each newline should represent a single paragraph.
     // filter out empty lines.
     const paragraphs = contents.split(`\n`).filter((p) => !!p);
-    // const rejoined = paragraphs.join(`\n`);
-    let curMargin = inchesToPDFKit(1);
+
+    let curMargin = inchesToPDFKit(this.onHeaderPage ? 3.5 : 1);
+    if (this.onHeaderPage) {
+      this.onHeaderPage = false;
+      this.doc.fontSize(12);
+    }
     const marginStep = Math.floor(
       this.doc.heightOfString("height", CONTENT_TEXT_OPTIONS) +
         inchesToPDFKit(0.025)
@@ -172,13 +167,14 @@ class BookFormatter {
         }
 
         // ensure we only linebreak at a whitespace char. make the lines shorter rather than longer.
+        let lineContent = p.slice(i, i + lineLength).trim();
         while (
-          !!p.charAt(i + lineLength) &&
-          !this.charIsWhiteSpace(p.charAt(i + lineLength))
+          !this.charIsWhiteSpace(p.charAt(i + lineLength)) ||
+          this.doc.widthOfString(lineContent) > CONTENT_BLOCK_WIDTH
         ) {
           lineLength -= 1;
+          lineContent = p.slice(i, i + lineLength).trim();
         }
-        const lineContent = p.slice(i, i + lineLength).trim();
 
         this.writePageContentRight(lineContent, curMargin, tab);
 
@@ -217,9 +213,8 @@ class BookFormatter {
     const [header, contents] = chapter.split("<END_HEADER>");
     this.writeHeaderTitleRight("Ringworld");
     this.writePageNumberRight("1");
-    // this.writeChapterHeader(header);
+    this.writeChapterHeader(header);
     this.writeChapterContents(contents);
-    this.finalizePDF();
   };
 
   printDoc = () => {
@@ -252,15 +247,48 @@ class BookFormatter {
     |         |         |
     |--------------------
     */
+    this.finalizePDF();
   };
 
   finalizePDF = () => {
     this.doc.end();
   };
+
+  drawCenterLine = () => {
+    this.doc.moveTo(PAGE_DIVIDER, 0).lineTo(PAGE_DIVIDER, A4_HEIGHT).stroke();
+  };
+
+  drawContentBoxes = () => {
+    // left side
+    let topLeftX = A4_RATIO / 2;
+    const topLeftY = A4_RATIO;
+    this.doc
+      .moveTo(topLeftX, topLeftY)
+      .polygon(
+        [topLeftX + CONTENT_BLOCK_WIDTH, topLeftY],
+        [topLeftX + CONTENT_BLOCK_WIDTH, topLeftY + CONTENT_BLOCK_HEIGHT],
+        [topLeftX, topLeftY + CONTENT_BLOCK_HEIGHT],
+        [topLeftX, topLeftY]
+      )
+      .stroke();
+
+    // right side
+    topLeftX += PAGE_DIVIDER + inchesToPDFKit(0.5);
+    this.doc
+      .moveTo(topLeftX, topLeftY)
+      .polygon(
+        [topLeftX + CONTENT_BLOCK_WIDTH, topLeftY],
+        [topLeftX + CONTENT_BLOCK_WIDTH, topLeftY + CONTENT_BLOCK_HEIGHT],
+        [topLeftX, topLeftY + CONTENT_BLOCK_HEIGHT],
+        [topLeftX, topLeftY]
+      )
+      .stroke();
+  };
 }
 
 const formatter = new BookFormatter();
-formatter.loadChapter("ringworld-1.txt");
-// formatter.writeHeaderTitleLeft("Larry Niven");
-// formatter.writeHeaderTitleRight("Ringworld");
-// formatter.writeChapterHeader(`Chapter 1\nLouis Wu`);
+formatter.drawCenterLine();
+formatter.drawContentBoxes();
+formatter.loadChapter("ringworld-1.txt").then(() => {
+  formatter.printDoc();
+});
