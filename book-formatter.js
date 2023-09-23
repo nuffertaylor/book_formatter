@@ -51,7 +51,7 @@ class BookFormatter {
 
     // procss terminal parameters
     let prevVal = "";
-    process.argv.forEach(function (val, index) {
+    for (const val of process.argv) {
       // 'fn' flag to add custom filename
       if (prevVal === "-fn") {
         // fn = FileName
@@ -66,18 +66,18 @@ class BookFormatter {
         }
       }
 
-      // if (prevVal === "-hl") {
-      //   // hl = Header Left
-      //   this.headerLeft = val;
-      // }
+      if (prevVal === "-hl") {
+        // hl = Header Left
+        this.headerLeft = val;
+      }
 
-      // if (prevVal === "-hr") {
-      //   // hr = Header Right
-      //   this.headerRight = val;
-      // }
+      if (prevVal === "-hr") {
+        // hr = Header Right
+        this.headerRight = val;
+      }
 
       prevVal = val;
-    });
+    }
 
     this.doc.pipe(fs.createWriteStream(this.filename));
   }
