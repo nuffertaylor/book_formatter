@@ -26,8 +26,19 @@ class BookFormatter {
   filename = "output.pdf"; // string
   headerMarginX = 0.5; // float, in inches
   headerMarginY = 0.5; // float, in inches
-  curPage = 0; // int
   onHeaderPage = false; // boolean
+  pages = []; // array of curPage
+  curPage = []; // array of
+  /* 
+    {
+      text: string,
+      marginX: float,
+      marginY: float,
+      fontSize: int
+    }*/
+  leftOrRight; // boolean, true === left, false === right
+  headerLeft = "Niven"; // string
+  headerRight = "Ringworld"; // string
 
   constructor() {
     // Create a document
@@ -54,12 +65,17 @@ class BookFormatter {
           this.filename += ".pdf";
         }
       }
-      if (prevVal === "-sp") {
-        // sp = Starting Page
-        if (!isNaN(val)) {
-          this.curPage = Math.floor(val);
-        }
-      }
+
+      // if (prevVal === "-hl") {
+      //   // hl = Header Left
+      //   this.headerLeft = val;
+      // }
+
+      // if (prevVal === "-hr") {
+      //   // hr = Header Right
+      //   this.headerRight = val;
+      // }
+
       prevVal = val;
     });
 
@@ -67,6 +83,7 @@ class BookFormatter {
   }
 
   writePageNumberLeft = (num) => {
+    num = num.toString();
     this.doc
       .fontSize(12)
       .text(
@@ -77,6 +94,7 @@ class BookFormatter {
   };
 
   writePageNumberRight = (num) => {
+    num = num.toString();
     this.doc
       .fontSize(12)
       .text(
@@ -88,33 +106,40 @@ class BookFormatter {
       );
   };
 
-  writeHeaderTitleLeft = (header) => {
-    const headerWidth = this.doc.widthOfString(header);
+  writeHeaderTitleLeft = () => {
+    if (this.headerLeft == null) return;
+    const headerWidth = this.doc.widthOfString(this.headerLeft);
     this.doc
       .fontSize(12)
       .text(
-        header,
+        this.headerLeft,
         CENTER_PAGE_LEFT - headerWidth / 2,
         inchesToPDFKit(this.headerMarginY)
       );
   };
 
-  writeHeaderTitleRight = (header) => {
-    const headerWidth = this.doc.widthOfString(header);
+  writeHeaderTitleRight = () => {
+    if (this.headerRight == null) return;
+    const headerWidth = this.doc.widthOfString(this.headerRight);
     this.doc
       .fontSize(12)
       .text(
-        header,
+        this.headerRight,
         CENTER_PAGE_RIGHT - headerWidth / 2,
         inchesToPDFKit(this.headerMarginY)
       );
   };
 
   writeChapterHeader = (header) => {
-    this.doc
-      .fontSize(32)
-      .text(header, PAGE_DIVIDER + inchesToPDFKit(1), inchesToPDFKit(1));
+    // chapters will always begin on the right page.
+    this.curPage.push({
+      text: header,
+      marginX: PAGE_DIVIDER + inchesToPDFKit(1),
+      marginY: inchesToPDFKit(1),
+      fontSize: 32,
+    });
     this.onHeaderPage = true;
+    this.leftOrRight = false;
   };
 
   charIsWhiteSpace = (ch) => {
@@ -126,7 +151,7 @@ class BookFormatter {
     // filter out empty lines.
     const paragraphs = contents.split(`\n`).filter((p) => !!p);
 
-    let curMargin = inchesToPDFKit(this.onHeaderPage ? 3.5 : 1);
+    let curMarginY = inchesToPDFKit(this.onHeaderPage ? 3.5 : 1);
     if (this.onHeaderPage) {
       this.onHeaderPage = false;
       this.doc.fontSize(12);
@@ -176,7 +201,14 @@ class BookFormatter {
           lineContent = p.slice(i, i + lineLength).trim();
         }
 
-        this.writePageContentRight(lineContent, curMargin, tab);
+        this.curPage.push({
+          text: lineContent,
+          marginX: this.leftOrRight
+            ? inchesToPDFKit(0.5 + (tab ? 0.3 : 0))
+            : PAGE_DIVIDER + inchesToPDFKit(1 + (tab ? 0.3 : 0)),
+          marginY: curMarginY,
+          fontSize: 12,
+        });
 
         // if we just wrote the first line, change to untabbed.
         if (tab) {
@@ -184,14 +216,20 @@ class BookFormatter {
         }
 
         // alter the y margin for the next line
-        curMargin += marginStep;
+        curMarginY += marginStep;
 
-        // if curMargin exceeds the bottom margin of the page, move to the next page
-        if (curMargin > CONTENT_BLOCK_HEIGHT + inchesToPDFKit(1)) {
-          this.newPage();
-          curMargin = inchesToPDFKit(1);
+        // if curMarginY exceeds the bottom margin of the page, move to the next page
+        if (curMarginY > CONTENT_BLOCK_HEIGHT + inchesToPDFKit(1)) {
+          this.pages.push(this.curPage);
+          this.curPage = [];
+          curMarginY = inchesToPDFKit(1);
+          this.leftOrRight = !this.leftOrRight;
         }
       }
+    }
+    // push any incomplete page
+    if (this.curPage.length > 0) {
+      this.pages.push(this.curPage);
     }
   };
 
@@ -211,22 +249,12 @@ class BookFormatter {
     const chapter = await readFile("./ringworld-1.txt", "utf8");
     // chapter header will be all contents of the file until the <END_HEADER> flag
     const [header, contents] = chapter.split("<END_HEADER>");
-    this.writeHeaderTitleRight("Ringworld");
-    this.writePageNumberRight("1");
     this.writeChapterHeader(header);
     this.writeChapterContents(contents);
   };
 
   printDoc = () => {
-    // TODO: when writing chapter contents, don't write to the doc yet. Instead, create object array that looks like this:
     /* [
-      [{
-        text,
-        marginTop,
-        marginLeft,
-        tab
-      }]
-    ]
 
     where the index (+1) is the page number.
     We'll only actually write this to the page in this printDoc method (when all chapters are loaded)
@@ -246,7 +274,53 @@ class BookFormatter {
     |         |         |
     |         |         |
     |--------------------
+
+
     */
+
+    for (let i = 0; i < this.pages.length; i += 4) {
+      const renderPage = (page, pageNum, leftPage) => {
+        if (page == null || page.length === 0) {
+          return;
+        }
+        console.log(
+          "rendering " +
+            (leftPage ? "left" : "right") +
+            " page " +
+            pageNum.toString()
+        );
+        let chapterPage = false; // only print page header and number on non-chapter pages
+        for (const line of page) {
+          if (line.fontSize > 12) {
+            chapterPage = true;
+          }
+          this.doc
+            .fontSize(line.fontSize)
+            .text(
+              line.text,
+              line.marginX,
+              line.marginY,
+              line.fontSize > 12 ? null : CONTENT_TEXT_OPTIONS
+            );
+        }
+        if (!chapterPage) {
+          if (leftPage) {
+            this.writePageNumberLeft(pageNum);
+            this.writeHeaderTitleLeft();
+          } else {
+            this.writePageNumberRight(pageNum);
+            this.writeHeaderTitleRight();
+          }
+        }
+      };
+      renderPage(this.pages[i + 3], i + 4, true); // p4
+      renderPage(this.pages[i], i + 1, false); // p1
+      this.newPage();
+      renderPage(this.pages[i + 1], i + 2, true); // p2
+      renderPage(this.pages[i + 2], i + 3, false); // p3
+      this.newPage();
+    }
+
     this.finalizePDF();
   };
 
