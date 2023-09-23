@@ -231,9 +231,8 @@ class BookFormatter {
       }
     }
     // push any incomplete page
-    if (this.curPage.length > 0) {
-      this.pages.push(this.curPage);
-    }
+    this.pages.push(this.curPage);
+    this.curPage = [];
   };
 
   newPage = () => {
@@ -241,7 +240,7 @@ class BookFormatter {
   };
 
   loadChapter = async (txtDir) => {
-    const chapter = await readFile("./ringworld-1.txt", "utf8");
+    const chapter = await readFile(txtDir, "utf8");
     // chapter header will be all contents of the file until the <END_HEADER> flag
     const [header, contents] = chapter.split("<END_HEADER>");
     // ensure the starting page of the chapter is odd
@@ -250,6 +249,12 @@ class BookFormatter {
     }
     this.writeChapterHeader(header);
     this.writeChapterContents(contents);
+  };
+
+  loadChapters = async (txtDirs) => {
+    for (const txtDir of txtDirs) {
+      await this.loadChapter(txtDir);
+    }
   };
 
   printDoc = () => {
@@ -360,8 +365,6 @@ class BookFormatter {
 }
 
 const formatter = new BookFormatter();
-formatter.drawCenterLine();
-formatter.drawContentBoxes();
-formatter.loadChapter("ringworld-1.txt").then(() => {
+formatter.loadChapters(["ringworld-1.txt", "ringworld-2.txt"]).then(() => {
   formatter.printDoc();
 });
