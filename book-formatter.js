@@ -4,17 +4,11 @@ const { readFile } = require("fs/promises");
 
 const A4_WIDTH = 841.89;
 const A4_HEIGHT = 595.28;
-const A4_RATIO = 76;
+const A4_RATIO = 76; // Ratio of PDFKit Units to Inches
 const inchesToPDFKit = (inches) => {
   return A4_RATIO * inches;
 };
 const PAGE_DIVIDER = A4_WIDTH / 2;
-const CONTENT_BLOCK_HEIGHT = A4_HEIGHT - inchesToPDFKit(1.25);
-const CONTENT_BLOCK_WIDTH = PAGE_DIVIDER - inchesToPDFKit(1.25);
-const TABBED_CONTENT_BLOCK_WIDTH = CONTENT_BLOCK_WIDTH - inchesToPDFKit(0.3);
-const CENTER_PAGE_LEFT = inchesToPDFKit(0.5) + CONTENT_BLOCK_WIDTH / 2;
-const CENTER_PAGE_RIGHT =
-  PAGE_DIVIDER + inchesToPDFKit(0.75) + CONTENT_BLOCK_WIDTH / 2;
 
 const CONTENT_TEXT_OPTIONS = {
   fontSize: 12,
@@ -22,11 +16,23 @@ const CONTENT_TEXT_OPTIONS = {
 };
 
 class BookFormatter {
-  doc; // PDFDocument
+  // args that can be set by the terminal
   filename = "output.pdf"; // string
-  headerMarginX = 0.5; // float, in inches
+  headerMarginTop = 0.5; // float, in inches
   headerMarginY = 0.5; // float, in inches
+  contentMarginTop = 1; // float, in inches Must be > headerMarginTop
+  contentMarginBottom = 0.25; // float, in inches
+  outsideMarginY = 0.5; // float, in inches - margin on the outside of the page
+  insideMarginY = 0.75; // float, in inches - margin on the interior of the page
+  tabSize = 0.3; // float, how much to indent paragraphs
+  CONTENT_BLOCK_HEIGHT;
+  CONTENT_BLOCK_WIDTH;
+  TABBED_CONTENT_BLOCK_WIDTH;
+  CENTER_PAGE_LEFT;
+  CENTER_PAGE_RIGHT;
+
   onHeaderPage = false; // boolean
+  doc; // PDFDocument
   pages = []; // array of curPage
   curPage = []; // array of
   /* 
@@ -41,6 +47,7 @@ class BookFormatter {
   headerRight; // string
 
   constructor() {
+    this.initArgs();
     // Create a document
     // A4 (841.89 x 595.28)
     this.doc = new PDFDocument({
@@ -49,38 +56,51 @@ class BookFormatter {
       font: "fonts/FrankRuhlLibre-Regular.ttf",
     });
 
-    // procss terminal parameters
+    this.doc.pipe(fs.createWriteStream(this.filename));
+  }
+
+  // initalize attrs passed via cmd line
+  initArgs = () => {
     let prevVal = "";
     for (const val of process.argv) {
       // 'fn' flag to add custom filename
-      if (prevVal === "-fn") {
-        // fn = FileName
-        this.filename = val;
-        if (
-          this.filename.slice(
-            this.filename.length - 4,
-            this.filename.length
-          ) !== ".pdf"
-        ) {
-          this.filename += ".pdf";
-        }
-      }
-
-      if (prevVal === "-hl") {
-        // hl = Header Left
-        this.headerLeft = val;
-      }
-
-      if (prevVal === "-hr") {
-        // hr = Header Right
-        this.headerRight = val;
+      switch (prevVal) {
+        case "-fn": // fn = FileName
+          this.filename = val;
+          if (
+            this.filename.slice(
+              this.filename.length - 4,
+              this.filename.length
+            ) !== ".pdf"
+          ) {
+            this.filename += ".pdf";
+          }
+          break;
+        case "-hl": // hl = Header Left
+          this.headerLeft = val;
+          break;
+        case "-hr": // hr = Header Right
+          this.headerRight = val;
+          break;
       }
 
       prevVal = val;
-    }
 
-    this.doc.pipe(fs.createWriteStream(this.filename));
-  }
+      this.CONTENT_BLOCK_HEIGHT =
+        A4_HEIGHT -
+        inchesToPDFKit(this.contentMarginBottom + this.contentMarginTop);
+      this.CONTENT_BLOCK_WIDTH =
+        PAGE_DIVIDER - inchesToPDFKit(this.outsideMarginY + this.insideMarginY);
+      this.TABBED_CONTENT_BLOCK_WIDTH =
+        this.CONTENT_BLOCK_WIDTH - inchesToPDFKit(this.tabSize);
+      this.CENTER_PAGE_LEFT =
+        inchesToPDFKit(this.outsideMarginY) + this.CONTENT_BLOCK_WIDTH / 2;
+      this.CENTER_PAGE_RIGHT =
+        PAGE_DIVIDER +
+        inchesToPDFKit(this.insideMarginY) +
+        this.CONTENT_BLOCK_WIDTH / 2;
+    }
+  };
 
   writePageNumberLeft = (num) => {
     num = num.toString();
@@ -88,7 +108,7 @@ class BookFormatter {
       .fontSize(12)
       .text(
         num,
-        inchesToPDFKit(this.headerMarginX),
+        inchesToPDFKit(this.headerMarginTop),
         inchesToPDFKit(this.headerMarginY)
       );
   };
@@ -100,7 +120,7 @@ class BookFormatter {
       .text(
         num,
         A4_WIDTH -
-          inchesToPDFKit(this.headerMarginX) -
+          inchesToPDFKit(this.headerMarginTop) -
           this.doc.widthOfString(num),
         inchesToPDFKit(this.headerMarginY)
       );
@@ -113,7 +133,7 @@ class BookFormatter {
       .fontSize(12)
       .text(
         this.headerLeft,
-        CENTER_PAGE_LEFT - headerWidth / 2,
+        this.CENTER_PAGE_LEFT - headerWidth / 2,
         inchesToPDFKit(this.headerMarginY)
       );
   };
@@ -125,7 +145,7 @@ class BookFormatter {
       .fontSize(12)
       .text(
         this.headerRight,
-        CENTER_PAGE_RIGHT - headerWidth / 2,
+        this.CENTER_PAGE_RIGHT - headerWidth / 2,
         inchesToPDFKit(this.headerMarginY)
       );
   };
@@ -166,15 +186,16 @@ class BookFormatter {
 
       // Number of non-tabbed lines this should take up
       const numLines =
-        p_length <= TABBED_CONTENT_BLOCK_WIDTH
+        p_length <= this.TABBED_CONTENT_BLOCK_WIDTH
           ? 0
           : Math.ceil(
-              (p_length - TABBED_CONTENT_BLOCK_WIDTH) / CONTENT_BLOCK_WIDTH
+              (p_length - this.TABBED_CONTENT_BLOCK_WIDTH) /
+                this.CONTENT_BLOCK_WIDTH
             );
 
       // char length approximate tabbed line size (will be adjusted)
       const tabbedLineSize = Math.floor(
-        p.length / (p_length / TABBED_CONTENT_BLOCK_WIDTH)
+        p.length / (p_length / this.TABBED_CONTENT_BLOCK_WIDTH)
       );
 
       // char length approximate non-tabbed line size (will be adjusted)
@@ -196,7 +217,7 @@ class BookFormatter {
         while (
           !this.charIsWhiteSpace(p.charAt(i + lineLength)) ||
           this.doc.widthOfString(lineContent) >
-            (tab ? TABBED_CONTENT_BLOCK_WIDTH : CONTENT_BLOCK_WIDTH)
+            (tab ? this.TABBED_CONTENT_BLOCK_WIDTH : this.CONTENT_BLOCK_WIDTH)
         ) {
           lineLength -= 1;
           lineContent = p.slice(i, i + lineLength).trim();
@@ -222,7 +243,7 @@ class BookFormatter {
         // if curMarginY exceeds the bottom margin of the page, move to the next page
         if (
           curMarginY + marginStep >
-          CONTENT_BLOCK_HEIGHT + inchesToPDFKit(1)
+          this.CONTENT_BLOCK_HEIGHT + inchesToPDFKit(1)
         ) {
           this.pages.push(this.curPage);
           this.curPage = [];
@@ -344,9 +365,12 @@ class BookFormatter {
     this.doc
       .moveTo(topLeftX, topLeftY)
       .polygon(
-        [topLeftX + CONTENT_BLOCK_WIDTH, topLeftY],
-        [topLeftX + CONTENT_BLOCK_WIDTH, topLeftY + CONTENT_BLOCK_HEIGHT],
-        [topLeftX, topLeftY + CONTENT_BLOCK_HEIGHT],
+        [topLeftX + this.CONTENT_BLOCK_WIDTH, topLeftY],
+        [
+          topLeftX + this.CONTENT_BLOCK_WIDTH,
+          topLeftY + this.CONTENT_BLOCK_HEIGHT,
+        ],
+        [topLeftX, topLeftY + this.CONTENT_BLOCK_HEIGHT],
         [topLeftX, topLeftY]
       )
       .stroke();
@@ -356,9 +380,12 @@ class BookFormatter {
     this.doc
       .moveTo(topLeftX, topLeftY)
       .polygon(
-        [topLeftX + CONTENT_BLOCK_WIDTH, topLeftY],
-        [topLeftX + CONTENT_BLOCK_WIDTH, topLeftY + CONTENT_BLOCK_HEIGHT],
-        [topLeftX, topLeftY + CONTENT_BLOCK_HEIGHT],
+        [topLeftX + this.CONTENT_BLOCK_WIDTH, topLeftY],
+        [
+          topLeftX + this.CONTENT_BLOCK_WIDTH,
+          topLeftY + this.CONTENT_BLOCK_HEIGHT,
+        ],
+        [topLeftX, topLeftY + this.CONTENT_BLOCK_HEIGHT],
         [topLeftX, topLeftY]
       )
       .stroke();
