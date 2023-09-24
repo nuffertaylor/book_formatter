@@ -18,8 +18,10 @@ const CONTENT_TEXT_OPTIONS = {
 class BookFormatter {
   // args that can be set by the terminal
   filename = "output.pdf"; // string
+  headerLeft; // string, printed on all left pages
+  headerRight; // string, printed on all right pages
   headerMarginTop = 0.5; // float, in inches
-  headerMarginY = 0.5; // float, in inches
+  headerMarginY = 0.5; // float, in inches (identical on both sides)
   contentMarginTop = 1; // float, in inches Must be > headerMarginTop
   contentMarginBottom = 0.25; // float, in inches
   outsideMarginY = 0.5; // float, in inches - margin on the outside of the page
@@ -30,12 +32,13 @@ class BookFormatter {
   headerFontSize = 12; // font size of page numbers and center header text
   chapterHeaderFontSize = 32; // font size of chapter indicators
   contentFontSize = 12; // font size of content
+
+  // functional attributes
   CONTENT_BLOCK_HEIGHT;
   CONTENT_BLOCK_WIDTH;
   TABBED_CONTENT_BLOCK_WIDTH;
   CENTER_PAGE_LEFT;
   CENTER_PAGE_RIGHT;
-
   onHeaderPage = false; // boolean
   doc; // PDFDocument
   pages = []; // array of curPage
@@ -48,8 +51,6 @@ class BookFormatter {
       fontSize: int
     }*/
   leftOrRight; // boolean, true === left, false === right
-  headerLeft; // string
-  headerRight; // string
 
   constructor() {
     this.initArgs();
@@ -86,6 +87,42 @@ class BookFormatter {
           break;
         case "-hr": // hr = Header Right
           this.headerRight = val;
+          break;
+        case "-hmt":
+          this.headerMarginTop = val;
+          break;
+        case "-hmy":
+          this.headerMarginY = val;
+          break;
+        case "-cmt":
+          this.contentMarginTop = val;
+          break;
+        case "-cmb":
+          this.contentMarginBottom = val;
+          break;
+        case "-omy":
+          this.outsideMarginY = val;
+          break;
+        case "-iny":
+          this.insideMarginY = val;
+          break;
+        case "-ts":
+          this.tabSize = val;
+          break;
+        case "-cmonnc":
+          this.contentMarginOnNewChapter = val;
+          break;
+        case "-sbl":
+          this.separationBetweenLines = val;
+          break;
+        case "-hfs":
+          this.headerFontSize = val;
+          break;
+        case "-chfs":
+          this.chapterHeaderFontSize = val;
+          break;
+        case "-fs":
+          this.contentFontSize = val;
           break;
       }
 
