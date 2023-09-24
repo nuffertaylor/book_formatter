@@ -25,6 +25,11 @@ class BookFormatter {
   outsideMarginY = 0.5; // float, in inches - margin on the outside of the page
   insideMarginY = 0.75; // float, in inches - margin on the interior of the page
   tabSize = 0.3; // float, how much to indent paragraphs
+  contentMarginOnNewChapter = 3.5; // where to start content on new page
+  separationBetweenLines = 0.025; // how much margin to put between lines
+  headerFontSize = 12; // font size of page numbers and center header text
+  chapterHeaderFontSize = 32; // font size of chapter indicators
+  contentFontSize = 12; // font size of content
   CONTENT_BLOCK_HEIGHT;
   CONTENT_BLOCK_WIDTH;
   TABBED_CONTENT_BLOCK_WIDTH;
@@ -105,7 +110,7 @@ class BookFormatter {
   writePageNumberLeft = (num) => {
     num = num.toString();
     this.doc
-      .fontSize(12)
+      .fontSize(this.headerFontSize)
       .text(
         num,
         inchesToPDFKit(this.headerMarginTop),
@@ -116,7 +121,7 @@ class BookFormatter {
   writePageNumberRight = (num) => {
     num = num.toString();
     this.doc
-      .fontSize(12)
+      .fontSize(this.headerFontSize)
       .text(
         num,
         A4_WIDTH -
@@ -130,7 +135,7 @@ class BookFormatter {
     if (this.headerLeft == null) return;
     const headerWidth = this.doc.widthOfString(this.headerLeft);
     this.doc
-      .fontSize(12)
+      .fontSize(this.headerFontSize)
       .text(
         this.headerLeft,
         this.CENTER_PAGE_LEFT - headerWidth / 2,
@@ -142,7 +147,7 @@ class BookFormatter {
     if (this.headerRight == null) return;
     const headerWidth = this.doc.widthOfString(this.headerRight);
     this.doc
-      .fontSize(12)
+      .fontSize(this.headerFontSize)
       .text(
         this.headerRight,
         this.CENTER_PAGE_RIGHT - headerWidth / 2,
@@ -154,9 +159,9 @@ class BookFormatter {
     // chapters will always begin on the right page.
     this.curPage.push({
       text: header,
-      marginX: PAGE_DIVIDER + inchesToPDFKit(1),
-      marginY: inchesToPDFKit(1),
-      fontSize: 32,
+      marginX: PAGE_DIVIDER + inchesToPDFKit(this.insideMarginY),
+      marginY: inchesToPDFKit(this.contentMarginTop),
+      fontSize: this.chapterHeaderFontSize,
     });
     this.onHeaderPage = true;
     this.leftOrRight = false;
@@ -171,14 +176,16 @@ class BookFormatter {
     // filter out empty lines.
     const paragraphs = contents.split(`\n`).filter((p) => !!p);
 
-    let curMarginY = inchesToPDFKit(this.onHeaderPage ? 3.5 : 1);
+    let curMarginY = inchesToPDFKit(
+      this.onHeaderPage ? this.contentMarginOnNewChapter : this.contentMarginTop
+    );
     if (this.onHeaderPage) {
       this.onHeaderPage = false;
-      this.doc.fontSize(12);
+      this.doc.fontSize(this.contentFontSize);
     }
     const marginStep = Math.floor(
       this.doc.heightOfString("height", CONTENT_TEXT_OPTIONS) +
-        inchesToPDFKit(0.025)
+        inchesToPDFKit(this.separationBetweenLines)
     );
     for (const p of paragraphs) {
       // the width of the paragraph in PDFKit units
@@ -226,10 +233,11 @@ class BookFormatter {
         this.curPage.push({
           text: lineContent,
           marginX: this.leftOrRight
-            ? inchesToPDFKit(0.5 + (tab ? 0.3 : 0))
-            : PAGE_DIVIDER + inchesToPDFKit(0.75 + (tab ? 0.3 : 0)),
+            ? inchesToPDFKit(this.outsideMarginY + (tab ? this.tabSize : 0))
+            : PAGE_DIVIDER +
+              inchesToPDFKit(this.insideMarginY + (tab ? this.tabSize : 0)),
           marginY: curMarginY,
-          fontSize: 12,
+          fontSize: this.contentFontSize,
         });
 
         // if we just wrote the first line, change to untabbed.
@@ -243,11 +251,11 @@ class BookFormatter {
         // if curMarginY exceeds the bottom margin of the page, move to the next page
         if (
           curMarginY + marginStep >
-          this.CONTENT_BLOCK_HEIGHT + inchesToPDFKit(1)
+          this.CONTENT_BLOCK_HEIGHT + inchesToPDFKit(this.contentMarginTop)
         ) {
           this.pages.push(this.curPage);
           this.curPage = [];
-          curMarginY = inchesToPDFKit(1);
+          curMarginY = inchesToPDFKit(this.contentMarginTop);
           this.leftOrRight = !this.leftOrRight;
         }
       }
@@ -317,7 +325,7 @@ class BookFormatter {
         );
         let chapterPage = false; // only print page header and number on non-chapter pages
         for (const line of page) {
-          if (line.fontSize > 12) {
+          if (line.fontSize > this.contentFontSize) {
             chapterPage = true;
           }
           this.doc
@@ -326,7 +334,7 @@ class BookFormatter {
               line.text,
               line.marginX,
               line.marginY,
-              line.fontSize > 12 ? null : CONTENT_TEXT_OPTIONS
+              line.fontSize > this.contentFontSize ? null : CONTENT_TEXT_OPTIONS
             );
         }
         if (!chapterPage) {
