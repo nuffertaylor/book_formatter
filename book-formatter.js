@@ -23,7 +23,7 @@ class BookFormatter {
   headerMarginTop = 0.5; // float, in inches
   headerMarginY = 0.5; // float, in inches (identical on both sides)
   contentMarginTop = 1; // float, in inches Must be > headerMarginTop
-  contentMarginBottom = 0.25; // float, in inches
+  contentMarginBottom = 0.5; // float, in inches
   outsideMarginY = 0.5; // float, in inches - margin on the outside of the page
   insideMarginY = 0.75; // float, in inches - margin on the interior of the page
   tabSize = 0.3; // float, how much to indent paragraphs
@@ -89,40 +89,40 @@ class BookFormatter {
           this.headerRight = val;
           break;
         case "-hmt":
-          this.headerMarginTop = val;
+          this.headerMarginTop = Number(val);
           break;
         case "-hmy":
-          this.headerMarginY = val;
+          this.headerMarginY = Number(val);
           break;
         case "-cmt":
-          this.contentMarginTop = val;
+          this.contentMarginTop = Number(val);
           break;
         case "-cmb":
-          this.contentMarginBottom = val;
+          this.contentMarginBottom = Number(val);
           break;
         case "-omy":
-          this.outsideMarginY = val;
+          this.outsideMarginY = Number(val);
           break;
         case "-iny":
-          this.insideMarginY = val;
+          this.insideMarginY = Number(val);
           break;
         case "-ts":
-          this.tabSize = val;
+          this.tabSize = Number(val);
           break;
         case "-cmonnc":
-          this.contentMarginOnNewChapter = val;
+          this.contentMarginOnNewChapter = Number(val);
           break;
         case "-sbl":
-          this.separationBetweenLines = val;
+          this.separationBetweenLines = Number(val);
           break;
         case "-hfs":
-          this.headerFontSize = val;
+          this.headerFontSize = Number(val);
           break;
         case "-chfs":
-          this.chapterHeaderFontSize = val;
+          this.chapterHeaderFontSize = Number(val);
           break;
         case "-fs":
-          this.contentFontSize = val;
+          this.contentFontSize = Number(val);
           break;
       }
 
