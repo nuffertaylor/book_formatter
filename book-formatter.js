@@ -20,9 +20,9 @@ class BookFormatter {
   filename = "output.pdf"; // string
   headerLeft; // string, printed on all left pages
   headerRight; // string, printed on all right pages
-  headerMarginTop = 0.5; // float, in inches
+  headerMarginX = 0.5; // float, in inches
   headerMarginY = 0.5; // float, in inches (identical on both sides)
-  contentMarginTop = 1; // float, in inches Must be > headerMarginTop
+  contentMarginTop = 1; // float, in inches Must be > headerMarginX
   contentMarginBottom = 0.5; // float, in inches
   outsideMarginY = 0.5; // float, in inches - margin on the outside of the page
   insideMarginY = 0.75; // float, in inches - margin on the interior of the page
@@ -32,6 +32,7 @@ class BookFormatter {
   headerFontSize = 12; // font size of page numbers and center header text
   chapterHeaderFontSize = 32; // font size of chapter indicators
   contentFontSize = 12; // font size of content
+  showContentMargins = false; // if set to true, will draw outline of content block margins
 
   // functional attributes
   CONTENT_BLOCK_HEIGHT;
@@ -88,8 +89,8 @@ class BookFormatter {
         case "-hr": // hr = Header Right
           this.headerRight = val;
           break;
-        case "-hmt":
-          this.headerMarginTop = Number(val);
+        case "-hmx":
+          this.headerMarginX = Number(val);
           break;
         case "-hmy":
           this.headerMarginY = Number(val);
@@ -124,6 +125,9 @@ class BookFormatter {
         case "-fs":
           this.contentFontSize = Number(val);
           break;
+        case "-scm":
+          this.showContentMargins = !!val; // boolean should be passed as 0 | 1
+          break;
       }
 
       prevVal = val;
@@ -150,7 +154,7 @@ class BookFormatter {
       .fontSize(this.headerFontSize)
       .text(
         num,
-        inchesToPDFKit(this.headerMarginTop),
+        inchesToPDFKit(this.headerMarginX),
         inchesToPDFKit(this.headerMarginY)
       );
   };
@@ -162,7 +166,7 @@ class BookFormatter {
       .text(
         num,
         A4_WIDTH -
-          inchesToPDFKit(this.headerMarginTop) -
+          inchesToPDFKit(this.headerMarginX) -
           this.doc.widthOfString(num),
         inchesToPDFKit(this.headerMarginY)
       );
@@ -378,6 +382,9 @@ class BookFormatter {
           if (leftPage) {
             this.writePageNumberLeft(pageNum);
             this.writeHeaderTitleLeft();
+            if (this.showContentMargins) {
+              this.drawContentBoxes();
+            }
           } else {
             this.writePageNumberRight(pageNum);
             this.writeHeaderTitleRight();
