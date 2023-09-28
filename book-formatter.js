@@ -233,6 +233,11 @@ class BookFormatter {
     for (let p of paragraphs) {
       let tabLineWidth = this.TABBED_CONTENT_BLOCK_WIDTH;
       let mainLineWidth = this.CONTENT_BLOCK_WIDTH;
+      let addtlMarginX = 0;
+
+      // tells us its the first line
+      let tab = true;
+
       if (p.includes("<MID_BREAK>")) {
         curMarginY += marginStep * 3;
         continue;
@@ -240,10 +245,10 @@ class BookFormatter {
 
       if (p.includes("<BLOCK_LINE>")) {
         p = p.replace("<BLOCK_LINE>", "");
+        addtlMarginX += inchesToPDFKit(this.tabSize);
         tabLineWidth -= inchesToPDFKit(this.tabSize);
         mainLineWidth -= inchesToPDFKit(this.tabSize * 2);
-
-        // TODO: implement line blocking (increased X margin on both sides)
+        tab = false; // this prevents new paragraphs from having tabs. should block_line have this attr?
       }
 
       // the width of the paragraph in PDFKit units
@@ -264,8 +269,6 @@ class BookFormatter {
       // char length of the next line to be printed. start with a tabbed line length
       let lineLength = tabbedLineSize;
 
-      // tells us its the first line
-      let tab = true;
       for (let i = 0; i < p.length; i += lineLength) {
         // check if this is the first line. If not, reset lineLength to nontabbed lineSize
         if (!tab) {
@@ -286,8 +289,10 @@ class BookFormatter {
         this.curPage.push({
           text: lineContent,
           marginX: this.leftOrRight
-            ? inchesToPDFKit(this.outsideMarginX + (tab ? this.tabSize : 0))
+            ? inchesToPDFKit(this.outsideMarginX + (tab ? this.tabSize : 0)) +
+              addtlMarginX
             : PAGE_DIVIDER +
+              addtlMarginX +
               inchesToPDFKit(this.insideMarginX + (tab ? this.tabSize : 0)),
           marginY: curMarginY,
           fontSize: this.contentFontSize,
