@@ -26,8 +26,8 @@ class BookFormatter {
   headerMarginY = 0.5; // float, in inches (identical on both sides)
   contentMarginTop = 1; // float, in inches Must be > headerMarginX
   contentMarginBottom = 0.5; // float, in inches
-  outsideMarginY = 0.5; // float, in inches - margin on the outside of the page
-  insideMarginY = 0.75; // float, in inches - margin on the interior of the page
+  outsideMarginX = 0.5; // float, in inches - margin on the outside of the page
+  insideMarginX = 0.75; // float, in inches - margin on the interior of the page
   tabSize = 0.3; // float, how much to indent paragraphs
   contentMarginOnNewChapter = 3.5; // where to start content on new page
   separationBetweenLines = 0.025; // how much margin to put between lines
@@ -103,11 +103,11 @@ class BookFormatter {
         case "-cmb":
           this.contentMarginBottom = Number(val);
           break;
-        case "-omy":
-          this.outsideMarginY = Number(val);
+        case "-omx":
+          this.outsideMarginX = Number(val);
           break;
-        case "-iny":
-          this.insideMarginY = Number(val);
+        case "-imx":
+          this.insideMarginX = Number(val);
           break;
         case "-ts":
           this.tabSize = Number(val);
@@ -138,14 +138,14 @@ class BookFormatter {
         A4_HEIGHT -
         inchesToPDFKit(this.contentMarginBottom + this.contentMarginTop);
       this.CONTENT_BLOCK_WIDTH =
-        PAGE_DIVIDER - inchesToPDFKit(this.outsideMarginY + this.insideMarginY);
+        PAGE_DIVIDER - inchesToPDFKit(this.outsideMarginX + this.insideMarginX);
       this.TABBED_CONTENT_BLOCK_WIDTH =
         this.CONTENT_BLOCK_WIDTH - inchesToPDFKit(this.tabSize);
       this.CENTER_PAGE_LEFT =
-        inchesToPDFKit(this.outsideMarginY) + this.CONTENT_BLOCK_WIDTH / 2;
+        inchesToPDFKit(this.outsideMarginX) + this.CONTENT_BLOCK_WIDTH / 2;
       this.CENTER_PAGE_RIGHT =
         PAGE_DIVIDER +
-        inchesToPDFKit(this.insideMarginY) +
+        inchesToPDFKit(this.insideMarginX) +
         this.CONTENT_BLOCK_WIDTH / 2;
     }
   };
@@ -202,7 +202,7 @@ class BookFormatter {
     // chapters will always begin on the right page.
     this.curPage.push({
       text: header,
-      marginX: PAGE_DIVIDER + inchesToPDFKit(this.insideMarginY),
+      marginX: PAGE_DIVIDER + inchesToPDFKit(this.insideMarginX),
       marginY: inchesToPDFKit(this.contentMarginTop),
       fontSize: this.chapterHeaderFontSize,
     });
@@ -231,6 +231,8 @@ class BookFormatter {
         inchesToPDFKit(this.separationBetweenLines)
     );
     for (let p of paragraphs) {
+      let tabLineWidth = this.TABBED_CONTENT_BLOCK_WIDTH;
+      let mainLineWidth = this.CONTENT_BLOCK_WIDTH;
       if (p.includes("<MID_BREAK>")) {
         curMarginY += marginStep * 3;
         continue;
@@ -238,6 +240,9 @@ class BookFormatter {
 
       if (p.includes("<BLOCK_LINE>")) {
         p = p.replace("<BLOCK_LINE>", "");
+        tabLineWidth -= inchesToPDFKit(this.tabSize);
+        mainLineWidth -= inchesToPDFKit(this.tabSize * 2);
+
         // TODO: implement line blocking (increased X margin on both sides)
       }
 
@@ -246,17 +251,12 @@ class BookFormatter {
 
       // Number of non-tabbed lines this should take up
       const numLines =
-        p_length <= this.TABBED_CONTENT_BLOCK_WIDTH
+        p_length <= tabLineWidth
           ? 0
-          : Math.ceil(
-              (p_length - this.TABBED_CONTENT_BLOCK_WIDTH) /
-                this.CONTENT_BLOCK_WIDTH
-            );
+          : Math.ceil((p_length - tabLineWidth) / mainLineWidth);
 
       // char length approximate tabbed line size (will be adjusted)
-      const tabbedLineSize = Math.floor(
-        p.length / (p_length / this.TABBED_CONTENT_BLOCK_WIDTH)
-      );
+      const tabbedLineSize = Math.floor(p.length / (p_length / tabLineWidth));
 
       // char length approximate non-tabbed line size (will be adjusted)
       const lineSize = Math.floor(p.length / numLines);
@@ -277,7 +277,7 @@ class BookFormatter {
         while (
           !this.charIsWhiteSpace(p.charAt(i + lineLength)) ||
           this.doc.widthOfString(lineContent) >
-            (tab ? this.TABBED_CONTENT_BLOCK_WIDTH : this.CONTENT_BLOCK_WIDTH)
+            (tab ? tabLineWidth : mainLineWidth)
         ) {
           lineLength -= 1;
           lineContent = p.slice(i, i + lineLength).trim();
@@ -286,9 +286,9 @@ class BookFormatter {
         this.curPage.push({
           text: lineContent,
           marginX: this.leftOrRight
-            ? inchesToPDFKit(this.outsideMarginY + (tab ? this.tabSize : 0))
+            ? inchesToPDFKit(this.outsideMarginX + (tab ? this.tabSize : 0))
             : PAGE_DIVIDER +
-              inchesToPDFKit(this.insideMarginY + (tab ? this.tabSize : 0)),
+              inchesToPDFKit(this.insideMarginX + (tab ? this.tabSize : 0)),
           marginY: curMarginY,
           fontSize: this.contentFontSize,
         });
