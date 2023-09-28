@@ -230,10 +230,15 @@ class BookFormatter {
       this.doc.heightOfString("height", CONTENT_TEXT_OPTIONS) +
         inchesToPDFKit(this.separationBetweenLines)
     );
-    for (const p of paragraphs) {
+    for (let p of paragraphs) {
       if (p.includes("<MID_BREAK>")) {
         curMarginY += marginStep * 3;
         continue;
+      }
+
+      if (p.includes("<BLOCK_LINE>")) {
+        p = p.replace("<BLOCK_LINE>", "");
+        // TODO: implement line blocking (increased X margin on both sides)
       }
 
       // the width of the paragraph in PDFKit units
