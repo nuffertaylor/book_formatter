@@ -231,6 +231,11 @@ class BookFormatter {
         inchesToPDFKit(this.separationBetweenLines)
     );
     for (const p of paragraphs) {
+      if (p.includes("<MID_BREAK>")) {
+        curMarginY += marginStep * 3;
+        continue;
+      }
+
       // the width of the paragraph in PDFKit units
       const p_length = this.doc.widthOfString(p, CONTENT_TEXT_OPTIONS);
 
