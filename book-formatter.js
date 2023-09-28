@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const { readFile } = require("fs/promises");
@@ -444,11 +446,15 @@ class BookFormatter {
   };
 }
 
-let prevVal = null;
-let title = null;
+let prevVal = null; // any
+let title = null; // string
+let numChapters = null; // integer
 for (const val of process.argv) {
   if (prevVal === "-t") {
     title = val;
+  }
+  if (prevVal === "-nc") {
+    numChapters = Number(val);
   }
   prevVal = val;
 }
@@ -458,9 +464,14 @@ if (title == null) {
   process.exit();
 }
 
+if (numChapters == null) {
+  console.log("number of chapters not provided");
+  process.exit();
+}
+
 const formatter = new BookFormatter();
 let files = [];
-for (let i = 1; i <= 24; i++) {
+for (let i = 1; i <= numChapters; i++) {
   files.push(title + "-" + i.toString() + ".txt");
 }
 formatter.loadChapters(files).then(() => {
