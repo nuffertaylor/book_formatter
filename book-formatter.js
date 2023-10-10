@@ -63,7 +63,7 @@ class BookFormatter {
     this.doc = new PDFDocument({
       size: "A4",
       layout: "landscape",
-      font: "fonts/" + this.fontName + ".ttf",
+      font: "fonts/" + this.font + ".ttf",
     });
 
     this.doc.pipe(fs.createWriteStream(this.filename));
