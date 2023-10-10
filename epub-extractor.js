@@ -1,4 +1,5 @@
 const EPub = require("epub");
+const xml2js = require("xml2js");
 
 class EpubExtractor {
   epub;
@@ -12,12 +13,22 @@ class EpubExtractor {
   loaded = async () => {
     const chapterIds = this.epub.flow.map((chapter) => chapter.id);
 
+    let x = 0;
     for (const id of chapterIds) {
       this.epub.getChapter(id, function (err, text) {
-        console.log(text);
+        xml2js
+          .parseStringPromise(text /*, options */)
+          .then(function (result) {
+            console.dir(result.h1.b);
+            console.log("Done");
+          })
+          .catch(function (err) {
+            // Failed
+          });
       });
+      x += 1;
     }
   };
 }
 
-const extractor = new EpubExtractor("./the_prince.epub");
+const extractor = new EpubExtractor("./shadow_over_mars.epub");
