@@ -4,6 +4,7 @@ import { Epub } from "@gxl/epub-parser/lib/parseEpub";
 class EpubExtractor {
   file_dir: string;
   epub: Epub | null = null;
+  content: string[] = [];
 
   constructor(file_dir: string) {
     this.file_dir = file_dir;
@@ -13,8 +14,11 @@ class EpubExtractor {
     this.epub = await parseEpub(this.file_dir, { type: "path" });
     if (!this.epub || !this.epub.sections) return;
     for (const section of this.epub.sections) {
-      // TODO
+      // @ts-ignore - no idea why but this line won't compile without this
+      this.content.push(section.toMarkdown() as string);
     }
+    console.log(this.content.length);
+    console.log(this.content[8]);
   }
 }
 
