@@ -35,6 +35,7 @@ class BookFormatter {
   chapterHeaderFontSize = 32; // font size of chapter indicators
   contentFontSize = 12; // font size of content
   showContentMargins = false; // if set to true, will draw outline of content block margins
+  font = "FrankRuhlLibre-Regular.ttf";
 
   // functional attributes
   CONTENT_BLOCK_HEIGHT;
@@ -62,7 +63,7 @@ class BookFormatter {
     this.doc = new PDFDocument({
       size: "A4",
       layout: "landscape",
-      font: "fonts/FrankRuhlLibre-Regular.ttf",
+      font: "fonts/" + this.fontName + ".ttf",
     });
 
     this.doc.pipe(fs.createWriteStream(this.filename));
@@ -74,6 +75,9 @@ class BookFormatter {
     for (const val of process.argv) {
       // 'fn' flag to add custom filename
       switch (prevVal) {
+        case "-f":
+          this.font = val;
+          break;
         case "-fn": // fn = FileName
           this.filename = val;
           if (
