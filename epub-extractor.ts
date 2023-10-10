@@ -17,8 +17,6 @@ class EpubExtractor {
       // @ts-ignore - no idea why but this line won't compile without this
       this.content.push(section.toMarkdown() as string);
     }
-    console.log(this.content.length);
-    console.log(this.content[8]);
   }
 }
 
