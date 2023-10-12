@@ -7,10 +7,13 @@ const { readFile } = require("fs/promises");
 const A4_WIDTH = 841.89;
 const A4_HEIGHT = 595.28;
 const A4_RATIO = 76; // Ratio of PDFKit Units to Inches
+
+const LETTER_WIDTH = 792;
+const LETTER_HEIGHT = 612;
 const inchesToPDFKit = (inches) => {
   return A4_RATIO * inches;
 };
-const PAGE_DIVIDER = A4_WIDTH / 2;
+const PAGE_DIVIDER = LETTER_WIDTH / 2;
 
 const CONTENT_TEXT_OPTIONS = {
   fontSize: 12,
@@ -60,8 +63,9 @@ class BookFormatter {
     this.initArgs();
     // Create a document
     // A4 (841.89 x 595.28)
+    // LETTER (792 x 612)
     this.doc = new PDFDocument({
-      size: "A4",
+      size: "LETTER",
       layout: "landscape",
       font: "fonts/" + this.font + ".ttf",
     });
@@ -139,7 +143,7 @@ class BookFormatter {
       prevVal = val;
 
       this.CONTENT_BLOCK_HEIGHT =
-        A4_HEIGHT -
+        LETTER_HEIGHT -
         inchesToPDFKit(this.contentMarginBottom + this.contentMarginTop);
       this.CONTENT_BLOCK_WIDTH =
         PAGE_DIVIDER - inchesToPDFKit(this.outsideMarginX + this.insideMarginX);
@@ -171,7 +175,7 @@ class BookFormatter {
       .fontSize(this.headerFontSize)
       .text(
         num,
-        A4_WIDTH -
+        LETTER_WIDTH -
           inchesToPDFKit(this.headerMarginX) -
           this.doc.widthOfString(num),
         inchesToPDFKit(this.headerMarginY)
@@ -428,7 +432,10 @@ class BookFormatter {
   };
 
   drawCenterLine = () => {
-    this.doc.moveTo(PAGE_DIVIDER, 0).lineTo(PAGE_DIVIDER, A4_HEIGHT).stroke();
+    this.doc
+      .moveTo(PAGE_DIVIDER, 0)
+      .lineTo(PAGE_DIVIDER, LETTER_HEIGHT)
+      .stroke();
   };
 
   drawContentBoxes = () => {
