@@ -10,6 +10,10 @@
   "license": "ISC",
   "dependencies": {
     "@gxl/epub-parser": "^2.0.4",
-    "pdfkit": "^0.13.0"
+    "epub-parser": "^0.2.5",
+    "fs": "^0.0.1-security",
+    "jsdom": "^24.1.0",
+    "pdfkit": "^0.13.0",
+    "unzipper": "^0.12.1"
   }
 }

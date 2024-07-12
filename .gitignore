@@ -5,3 +5,4 @@ fonts
 .DS_Store
 cache
 *.epub
+temp
